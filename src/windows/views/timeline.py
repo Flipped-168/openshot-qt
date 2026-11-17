@@ -67,7 +67,7 @@ from classes.effect_init import effect_options
 from classes.logger import log
 from classes.query import File, Clip, Transition, Track, Effect
 from classes.clipboard import ClipboardManager
-from classes.direct_text import copied_text_keyframes, copied_text_style
+from classes.direct_text import copied_text_keyframes, copied_text_style, save_text_asset
 from classes.thumbnail import GetThumbPath
 from classes.waveform_cache import sample_count, is_reference
 from classes.waveform import (
@@ -397,6 +397,11 @@ class TimelineView(updates.UpdateInterface, ViewClass):
                     obj.data.pop("id", None)
                     obj.id = None
                     self._assign_new_effect_ids(obj.data)
+                    if isinstance(obj, Clip) and obj.data.get("direct_text"):
+                        # A pasted text clip owns its words independently of the source.
+                        # Keep its reader and style curves, including animated overrides.
+                        asset = save_text_asset(obj.data["direct_text"])
+                        obj.data["file_id"] = asset.id
                     obj.data["position"] = obj.data.get("position", 0.0) + position_diff
                     old_layer = obj.data.get("layer", 0)
                     try:
@@ -1615,7 +1620,11 @@ class TimelineView(updates.UpdateInterface, ViewClass):
             (_("From Right"),     MenuAnimate.FOCUS_WIPE_IN_RIGHT),
             (_("From Top"),       MenuAnimate.FOCUS_WIPE_IN_TOP),
         ]))
+        if hasattr(openshot, "Distort"):
+            _motion_act(In_Menu, _("Lens Resolve In"), MenuAnimate.LENS_RESOLVE_IN)
         _motion_act(In_Menu, _("Pop In"),    MenuAnimate.POP_IN)
+        if hasattr(openshot, "Distort"):
+            _motion_act(In_Menu, _("Ribbon In"), MenuAnimate.RIBBON_IN)
         In_Menu.addMenu(_motion_sub(_("Slide In"), [
             (_("From Bottom"), MenuAnimate.SLIDE_IN_BOTTOM),
             (_("From Left"),   MenuAnimate.SLIDE_IN_LEFT),
@@ -1623,6 +1632,8 @@ class TimelineView(updates.UpdateInterface, ViewClass):
             (_("From Top"),    MenuAnimate.SLIDE_IN_TOP),
         ]))
         _motion_act(In_Menu, _("Spiral In"), MenuAnimate.SPIRAL_IN)
+        if hasattr(openshot, "Distort"):
+            _motion_act(In_Menu, _("Wave In"), MenuAnimate.WAVE_IN)
         In_Menu.addMenu(_motion_sub(_("Wipe In"), [
             (_("Circle Expand"),  MenuAnimate.WIPE_IN_CIRCLE_EXPAND),
             (_("Circle Shrink"),  MenuAnimate.WIPE_IN_CIRCLE_SHRINK),
@@ -1657,7 +1668,11 @@ class TimelineView(updates.UpdateInterface, ViewClass):
             (_("To Right"),       MenuAnimate.FOCUS_WIPE_OUT_RIGHT),
             (_("To Top"),         MenuAnimate.FOCUS_WIPE_OUT_TOP),
         ]))
+        if hasattr(openshot, "Distort"):
+            _motion_act(Out_Menu, _("Lens Resolve Out"), MenuAnimate.LENS_RESOLVE_OUT)
         _motion_act(Out_Menu, _("Pop Out"),   MenuAnimate.POP_OUT)
+        if hasattr(openshot, "Distort"):
+            _motion_act(Out_Menu, _("Ribbon Out"), MenuAnimate.RIBBON_OUT)
         Out_Menu.addMenu(_motion_sub(_("Slide Out"), [
             (_("To Bottom"), MenuAnimate.SLIDE_OUT_BOTTOM),
             (_("To Left"),   MenuAnimate.SLIDE_OUT_LEFT),
@@ -1665,6 +1680,8 @@ class TimelineView(updates.UpdateInterface, ViewClass):
             (_("To Top"),    MenuAnimate.SLIDE_OUT_TOP),
         ]))
         _motion_act(Out_Menu, _("Spiral Out"), MenuAnimate.SPIRAL_OUT)
+        if hasattr(openshot, "Distort"):
+            _motion_act(Out_Menu, _("Wave Out"), MenuAnimate.WAVE_OUT)
         Out_Menu.addMenu(_motion_sub(_("Wipe Out"), [
             (_("Circle Expand"),  MenuAnimate.WIPE_OUT_CIRCLE_EXPAND),
             (_("Circle Shrink"),  MenuAnimate.WIPE_OUT_CIRCLE_SHRINK),
@@ -1687,6 +1704,7 @@ class TimelineView(updates.UpdateInterface, ViewClass):
             (_("Shake Y"),     MenuAnimate.SHAKE_Y),
             (_("Swing"),       MenuAnimate.SWING),
             (_("Tada"),        MenuAnimate.TADA),
+            *([(_("Wave Pass"), MenuAnimate.WAVE_PASS)] if hasattr(openshot, "Distort") else []),
             (_("Wobble"),      MenuAnimate.WOBBLE),
         ]))
 
